@@ -1,6 +1,5 @@
 import os
 import struct
-#from ctypes import *
 import ctypes
 
 API_VERSION = 1
@@ -222,7 +221,8 @@ class PluginModelFactory(object): # does the hard work
         # open library
         self._created_models = {}
         self._modelLib.open(path)
-        self._cdll = ctypes.CDLL(None, handle=self._modelLib.handle)
+        #self._cdll = ctypes.CDLL(None, handle=self._modelLib.handle)
+        self._cdll = self._modelLib.handle
         self.path  = path
         try:
             def loadfunction(cdll, name, restype, argtypes, default=None):
@@ -251,12 +251,12 @@ class PluginModelFactory(object): # does the hard work
             self._create_model     = loadfunction(self._cdll, 'create_model'    , c_cmodel_p, [c_data_p  ], default=default_create_model )
             self._destroy_model    = loadfunction(self._cdll, 'destroy_model'   , None      , [c_cmodel_p], default=default_destroy_model)
             # I/Q calculations
-            self._calculate_q      = loadfunction(self._cdll, 'calculate_q'     , None, [c_cmodel_p, c_parameters_p, c_size_t, c_double_p, c_double_p                        ], default=default_calculate)
-            self._calculate_qxqy   = loadfunction(self._cdll, 'calculate_qxqy'  , None, [c_cmodel_p, c_parameters_p, c_size_t, c_double_p, c_double_p, c_double_p            ], default=default_calculate)
-            self._calculate_qxqyqz = loadfunction(self._cdll, 'calculate_qxqyqz', None, [c_cmodel_p, c_parameters_p, c_size_t, c_double_p, c_double_p, c_double_p, c_double_p], default=default_calculate)
+            self._calculate_q      = loadfunction(self._cdll, 'calculate_q'     , None, [c_cmodel_p, c_parameters_p, ctypes.c_size_t, c_double_p, c_double_p                        ], default=default_calculate)
+            self._calculate_qxqy   = loadfunction(self._cdll, 'calculate_qxqy'  , None, [c_cmodel_p, c_parameters_p, ctypes.c_size_t, c_double_p, c_double_p, c_double_p            ], default=default_calculate)
+            self._calculate_qxqyqz = loadfunction(self._cdll, 'calculate_qxqyqz', None, [c_cmodel_p, c_parameters_p, ctypes.c_size_t, c_double_p, c_double_p, c_double_p, c_double_p], default=default_calculate)
             # other calculations
-            self._calculate_ER     = loadfunction(self._cdll, 'calculate_ER'    , c_double, [c_cmodel_p, c_parameters_p])
-            self._calculate_VR     = loadfunction(self._cdll, 'calculate_VR'    , c_double, [c_cmodel_p, c_parameters_p])
+            self._calculate_ER     = loadfunction(self._cdll, 'calculate_ER'    , ctypes.c_double, [c_cmodel_p, c_parameters_p])
+            self._calculate_VR     = loadfunction(self._cdll, 'calculate_VR'    , ctypes.c_double, [c_cmodel_p, c_parameters_p])
         except:
             try:
                 self.unload()
@@ -346,7 +346,7 @@ class PluginModelFactory(object): # does the hard work
         
     # helper
     def _get_cparameters(self, model_info, parameters): # creates a c-array which holds parameter values (expected by c-model)
-        is32bit = sizeof(c_size_t) == 4
+        is32bit = ctypes.sizeof(ctypes.c_size_t) == 4
 
         # determine size and offsets
         data_size = 0
@@ -354,8 +354,8 @@ class PluginModelFactory(object): # does the hard work
         for p in model_info.parameters:
             offsets.append(data_size)
             if not p.flags & ParameterFlags.Polydisperse:
-                data_size += sizeof(c_size_t) # size_t type = ParameterType.Simple;
-                data_size += sizeof(c_double) # double value;
+                data_size += ctypes.sizeof(ctypes.c_size_t) # size_t type = ParameterType.Simple;
+                data_size += ctypes.sizeof(ctypes.c_double) # double value;
             else:
                 values_weights = getattr(parameters, p.name)
                 if isinstance(values_weights, (int, long, float)):
@@ -363,20 +363,20 @@ class PluginModelFactory(object): # does the hard work
                 else:
                     npoints = len(values_weights.values)
                 
-                data_size += sizeof(c_size_t)            # size_t type = ParameterType.Polydisperse;
-                data_size += sizeof(c_size_t)            # size_t npoints;
-                data_size += sizeof(c_double) * npoints  # double values[npoints];
-                data_size += sizeof(c_double) * npoints  # double weights[npoints];
+                data_size += ctypes.sizeof(ctypes.c_size_t)            # size_t type = ParameterType.Polydisperse;
+                data_size += ctypes.sizeof(ctypes.c_size_t)            # size_t npoints;
+                data_size += ctypes.sizeof(ctypes.c_double) * npoints  # double values[npoints];
+                data_size += ctypes.sizeof(ctypes.c_double) * npoints  # double weights[npoints];
 
         offsets.append(data_size)
-        data_size += sizeof(c_size_t) # size_t type = ParameterType.End;
+        data_size += ctypes.sizeof(ctypes.c_size_t) # size_t type = ParameterType.End;
 
         # determine header size
-        header_size  = sizeof(c_size_t)                # size_t count;
-        header_size += sizeof(c_size_t) * len(offsets) # size_t offsets[count];
+        header_size  = ctypes.sizeof(ctypes.c_size_t)                # size_t count;
+        header_size += ctypes.sizeof(ctypes.c_size_t) * len(offsets) # size_t offsets[count];
 
         # create buffer
-        buffer = create_string_buffer(header_size + data_size)
+        buffer = ctypes.create_string_buffer(header_size + data_size)
         # write header
         if is32bit:
             struct.pack_into('I%iI' % len(offsets), buffer, 0, len(offsets), *offsets)
@@ -390,10 +390,10 @@ class PluginModelFactory(object): # does the hard work
                     struct.pack_into('I', buffer, offset, ParameterType.Simple)
                 else:
                     struct.pack_into('Q', buffer, offset, ParameterType.Simple)
-                offset += sizeof(c_size_t) # size_t type = ParameterType.Simple;
+                offset += ctypes.sizeof(ctypes.c_size_t) # size_t type = ParameterType.Simple;
 
                 struct.pack_into('=d', buffer, offset, getattr(parameters, p.name))
-                offset += sizeof(c_double) # double value;
+                offset += ctypes.sizeof(ctypes.c_double) # double value;
             else:
                 values_weights = getattr(parameters, p.name)
                 is_single      = isinstance(values_weights, (int, long, float))
@@ -406,20 +406,20 @@ class PluginModelFactory(object): # does the hard work
                     struct.pack_into('II', buffer, offset, ParameterType.Polydisperse, npoints)
                 else:
                     struct.pack_into('QQ', buffer, offset, ParameterType.Polydisperse, npoints)
-                offset += sizeof(c_size_t) # size_t type = ParameterType.Polydisperse;
-                offset += sizeof(c_size_t) # size_t npoints;
+                offset += ctypes.sizeof(ctypes.c_size_t) # size_t type = ParameterType.Polydisperse;
+                offset += ctypes.sizeof(ctypes.c_size_t) # size_t npoints;
 
                 if is_single:
                     struct.pack_into('=dd', buffer, offset, values_weights, 1.0)
-                    offset += sizeof(c_double)            # double values[1];
-                    offset += sizeof(c_double)            # double weights[1];
+                    offset += ctypes.sizeof(ctypes.c_double)            # double values[1];
+                    offset += ctypes.sizeof(ctypes.c_double)            # double weights[1];
                 else:
                     format = '=%id' % npoints
                     struct.pack_into(format, buffer, offset, *values_weights.values)
-                    offset += sizeof(c_double) * npoints  # double values[npoints];
+                    offset += ctypes.sizeof(ctypes.c_double) * npoints  # double values[npoints];
                     
                     struct.pack_into(format, buffer, offset, *values_weights.weights)
-                    offset += sizeof(c_double) * npoints  # double weights[npoints];
+                    offset += ctypes.sizeof(ctypes.c_double) * npoints  # double weights[npoints];
                 
         # write end
         if is32bit:
@@ -444,8 +444,8 @@ class PluginModelFactory(object): # does the hard work
             return []
 
         n       = len(q)
-        iq_data = (c_double * n)()
-        q_data  = (c_double * n)(*q)
+        iq_data = (ctypes.c_double * n)()
+        q_data  = (ctypes.c_double * n)(*q)
         self._calculate_q(cmodel, cparameters, n, iq_data, q_data)
         return list(iq_data)
         
@@ -468,9 +468,9 @@ class PluginModelFactory(object): # does the hard work
             raise Exception()
         
         n = nx
-        iq_data = (c_double * n)()
-        qx_data = (c_double * n)(*qx)
-        qy_data = (c_double * n)(*qy)
+        iq_data = (ctypes.c_double * n)()
+        qx_data = (ctypes.c_double * n)(*qx)
+        qy_data = (ctypes.c_double * n)(*qy)
         self._calculate_qxqy(cmodel, cparameters, n, iq_data, qx_data, qy_data)
         return list(iq_data)
         
@@ -494,10 +494,10 @@ class PluginModelFactory(object): # does the hard work
             raise Exception()
 
         n = nx
-        iq_data = (c_double * n)()
-        qx_data = (c_double * n)(*qx)
-        qy_data = (c_double * n)(*qy)
-        qz_data = (c_double * n)(*qz)
+        iq_data = (ctypes.c_double * n)()
+        qx_data = (ctypes.c_double * n)(*qx)
+        qy_data = (ctypes.c_double * n)(*qy)
+        qz_data = (ctypes.c_double * n)(*qz)
         self._calculate_qxqyqz(cmodel, cparameters, n, iq_data, qx_data, qy_data, qz_data)
         return list(iq_data)
 
@@ -580,7 +580,9 @@ def Test(path):
 
 if __name__ == "__main__":
     print 'Main: Starting...'
-    #Test(r'C:\Users\davidm\Desktop\SasView\CPlugin\SimpleModel.dll')
-    #Test(r'C:\Users\davidm\Desktop\SasView\CPlugin\SphereModel\Debug\SphereModel.dll')
     Test('SimpleModel/libSimpleModel.so')
+    Test('SphereModel/libSphereModel.so')
+    # Most complicated
+    Test('SampleModel/libSampleModel.so')
+    
     print 'Main: Done!'
