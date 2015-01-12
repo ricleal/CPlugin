@@ -33,6 +33,12 @@ bool update_model(void* ptr, void** p) {
     SphereModel* model        = (SphereModel*)ptr;
     Parameter*   model_params = &(model->scale);
 
+    //
+	// It explodes here when accessing to the *(size_t*)(*p)
+	//
+
+	std::cout << "It explodes here!" <<std::endl;
+
     // update model
     ParameterInfo* param_info = param_infos;
     while (param_info->Name != NULL) {
@@ -70,7 +76,7 @@ CExport void* get_model_info() {
         destroy_model(model);
         is_initilized = true;
     }
-    // ensure that returned pointer points to static data which doesn’t require to be released
+    // ensure that returned pointer points to static data which doesnï¿½t require to be released
     return &model_info;
 }
 CExport void* create_model(void* data) { // "data" is only provided if associated python script defines it

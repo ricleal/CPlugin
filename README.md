@@ -20,9 +20,13 @@ $ cd build/
 $ cmake ..
 
 $ make
+
+$ ./PluginModel.py
+
+
 ```
 
-Edit ```PluginModel.py``` and play with it!
+Launch and play with  ```PluginModel.py```.
 
 
 

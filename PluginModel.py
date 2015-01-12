@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import os
 import struct
 import ctypes
@@ -580,9 +582,15 @@ def Test(path):
 
 if __name__ == "__main__":
     print 'Main: Starting...'
+    
+    print "*** Simple Model:"
     Test('SimpleModel/libSimpleModel.so')
+    
+    print "*** Sphere Model:"
     Test('SphereModel/libSphereModel.so')
+    
     # Most complicated
+    print "*** Sample Model:"
     Test('SampleModel/libSampleModel.so')
     
     print 'Main: Done!'
