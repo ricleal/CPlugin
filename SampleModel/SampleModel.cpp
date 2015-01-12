@@ -33,17 +33,16 @@ bool update_model(void* ptr, void** p) {
     SphereModel* model        = (SphereModel*)ptr;
     Parameter*   model_params = &(model->scale);
 
-    //
-	// It explodes here when accessing to the *(size_t*)(*p)
-	//
-
-	std::cout << "It explodes here!" <<std::endl;
-
     // update model
     ParameterInfo* param_info = param_infos;
     while (param_info->Name != NULL) {
         if (*p == NULL)
             return false;
+
+        //
+    	// It explodes here when accessing to the *(size_t*)(*p)
+    	//
+    	std::cout << "It explodes here!" <<std::endl;
 
         switch (*(size_t*)(*p)) {
         case PT_Simple:
@@ -98,11 +97,11 @@ CExport void* create_model(void* data) { // "data" is only provided if associate
 
         if (model_params->has_dispersion)
             param_info->Flags |= PF_Polydisperse;
-        
+
         model_params++;
         param_info++;
     }
-    
+
     return model;
 }
 CExport void destroy_model(void* ptr) {
